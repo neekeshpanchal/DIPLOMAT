@@ -93,10 +93,9 @@ jobs:
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__  # Ensure this is set or use secrets.PYPI_API_TOKEN
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}  # Use a token for test.pypi.org
-          repository_url: https://test.pypi.org/legacy/  # Publish to test PyPI for development versions
           skip-existing: true
+    outputs:
+      NEXT_TAG: "${{ needs.build.outputs.NEXT_TAG }}"
 
 
   github-release:
