@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi # Use a different environment or adjust as necessary
-      url: https://test.pypi.org/p/diplomat-track
+      url: https://pypi.org/p/diplomat-track
     permissions:
       id-token: write
     steps:
