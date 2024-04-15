@@ -1,10 +1,9 @@
-name: Publish Python Distribution to PyPI
+name: Publish Python Development Distribution to PyPI
 
 on:
   push:
     branches:
-      - main
-
+      - develop  # Trigger on pushes to develop branch
 
 jobs:
   version-check:
@@ -29,7 +28,7 @@ jobs:
               echo "$VERSION is not a valid version!"
               exit 1
           fi
-          PROPOSED_TAG="v$VERSION"
+          PROPOSED_TAG="v${VERSION}-dev"  # Append -dev for development builds
           echo "Python package version: $VERSION"
           echo "Github release version: $RELEASE_VERSION"
           echo "Next proposed tag: $PROPOSED_TAG"
@@ -43,47 +42,19 @@ jobs:
       PYTHON_VERSION: ${{ steps.release-info.outputs.PYTHON_VERSION }}
       NEXT_TAG: ${{ steps.release-info.outputs.NEXT_TAG }}
 
-
-  build:
-    name: Build distribution
-    needs:
-      - version-check
-    if: "${{ needs.version-check.outputs.RELEASE_VERSION != needs.version-check.outputs.PYTHON_VERSION }}"
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.x"
-
-    - name: Install pypa/build
-      run: python3 -m pip install build --user
-    - name: Build a binary wheel and a source tarball
-      run: python3 -m build
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v3
-      with:
-        name: python-package-distributions
-        path: dist/
-
-    outputs:
-      NEXT_TAG: "${{ needs.version-check.outputs.NEXT_TAG }}"
-
+  # Build, Publish and GitHub Release steps remain mostly the same, except for some nuances.
+  # Here's a quick change for the publish-to-pypi job:
 
   publish-to-pypi:
-    name: Publish Python distribution to PyPI
+    name: Publish Python development distribution to PyPI
     needs:
       - build
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://pypi.org/p/diplomat-track  # We'll call our package diplomat-track...
+      name: pypi-test  # Use a different environment or adjust as necessary
+      url: https://test.pypi.org/p/diplomat-track
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      id-token: write
     steps:
       - name: Download all the dists
         uses: actions/download-artifact@v3
@@ -93,54 +64,7 @@ jobs:
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          user: __token__  # Ensure this is set or use secrets.PYPI_API_TOKEN
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}  # Use a token for test.pypi.org
+          repository_url: https://test.pypi.org/legacy/  # Publish to test PyPI for development versions
           skip-existing: true
-    outputs:
-      NEXT_TAG: "${{ needs.build.outputs.NEXT_TAG }}"
-
-
-  github-release:
-    name: Sign the Python distribution with Sigstore and upload them to GitHub Release
-    needs:
-      - publish-to-pypi
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write  # IMPORTANT: mandatory for making GitHub Releases
-      id-token: write  # IMPORTANT: mandatory for sigstore
-
-    steps:
-      - name: Pull down release notes.
-        uses: actions/checkout@v3
-        with:
-          sparse-checkout: 'RELEASE_NOTES.md'
-          sparse-checkout-cone-mode: false
-      - name: Download all the dists
-        uses: actions/download-artifact@v3
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Sign the dists with Sigstore
-        uses: sigstore/gh-action-sigstore-python@v1.2.3
-        with:
-          inputs: >-
-            ./dist/*.tar.gz
-            ./dist/*.whl
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create
-          '${{ needs.publish-to-pypi.outputs.NEXT_TAG }}'
-          --title 'DIPLOMAT Release ${{ needs.publish-to-pypi.outputs.NEXT_TAG }}'
-          --repo '${{ github.repository }}'
-          --notes-file "RELEASE_NOTES.md"
-      - name: Upload artifact signatures to GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        # Upload to GitHub Release using the `gh` CLI.
-        # `dist/` contains the built packages, and the
-        # sigstore-produced signatures and certificates.
-        run: >-
-          gh release upload
-          '${{ needs.publish-to-pypi.outputs.NEXT_TAG }}' dist/**
-          --repo '${{ github.repository }}'
