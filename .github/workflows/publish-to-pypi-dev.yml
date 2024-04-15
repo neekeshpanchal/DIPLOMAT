@@ -44,7 +44,7 @@ jobs:
 
   # Build, Publish and GitHub Release steps remain mostly the same, except for some nuances.
   # Here's a quick change for the publish-to-pypi job:
-build:
+  build:
     name: Build distribution
     needs:
       - version-check
