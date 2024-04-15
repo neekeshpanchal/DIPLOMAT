@@ -3,6 +3,7 @@ A tool providing multi-animal tracking capabilities on top of other Deep learnin
 """
 
 __version__ = "0.1.2"
+__version_dev__ = "0.0.1"
 # Can be used by functions to determine if diplomat was invoked through it's CLI interface.
 CLI_RUN = False
 
