@@ -80,7 +80,7 @@ jobs:
       - build
     runs-on: ubuntu-latest
     environment:
-      name: pypi-test  # Use a different environment or adjust as necessary
+      name: pypi # Use a different environment or adjust as necessary
       url: https://test.pypi.org/p/diplomat-track
     permissions:
       id-token: write
