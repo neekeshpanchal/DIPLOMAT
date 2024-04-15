@@ -22,7 +22,7 @@ jobs:
         id: release-info
         run: |
           RELEASE_VERSION=$(echo $LATEST_RELEASE | tr -d "v ")
-          VERSION=$(cat diplomat/__init__.py | grep "__version__" | cut -d "=" -f 2 | tr -d '" ')
+          VERSION=$(cat diplomat/__init__.py | grep "__version_dev__" | cut -d "=" -f 2 | tr -d '" ')
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
             then
               echo "$VERSION is not a valid version!"
