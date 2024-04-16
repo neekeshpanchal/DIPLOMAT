@@ -28,7 +28,7 @@ jobs:
               echo "$VERSION is not a valid version!"
               exit 1
           fi
-          PROPOSED_TAG="v${VERSION}-dev"  # Append -dev for development builds
+          PROPOSED_TAG="v${VERSION}.dev"  # Append .dev for development builds
           echo "Python package version: $VERSION"
           echo "Github release version: $RELEASE_VERSION"
           echo "Next proposed tag: $PROPOSED_TAG"
@@ -97,50 +97,3 @@ jobs:
     outputs:
       NEXT_TAG: "${{ needs.build.outputs.NEXT_TAG }}"
 
-
-  github-release:
-    name: Sign the Python distribution with Sigstore and upload them to GitHub Release
-    needs:
-      - publish-to-pypi
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write  # IMPORTANT: mandatory for making GitHub Releases
-      id-token: write  # IMPORTANT: mandatory for sigstore
-
-    steps:
-      - name: Pull down release notes.
-        uses: actions/checkout@v3
-        with:
-          sparse-checkout: 'RELEASE_NOTES.md'
-          sparse-checkout-cone-mode: false
-      - name: Download all the dists
-        uses: actions/download-artifact@v3
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Sign the dists with Sigstore
-        uses: sigstore/gh-action-sigstore-python@v1.2.3
-        with:
-          inputs: >-
-            ./dist/*.tar.gz
-            ./dist/*.whl
-      - name: Create GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create
-          '${{ needs.publish-to-pypi.outputs.NEXT_TAG }}'
-          --title 'DIPLOMAT Release ${{ needs.publish-to-pypi.outputs.NEXT_TAG }}'
-          --repo '${{ github.repository }}'
-          --notes-file "RELEASE_NOTES.md"
-      - name: Upload artifact signatures to GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        # Upload to GitHub Release using the `gh` CLI.
-        # `dist/` contains the built packages, and the
-        # sigstore-produced signatures and certificates.
-        run: >-
-          gh release upload
-          '${{ needs.publish-to-pypi.outputs.NEXT_TAG }}' dist/**
-          --repo '${{ github.repository }}'
